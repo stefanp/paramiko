@@ -117,22 +117,21 @@ class AgentProxyThread(threading.Thread):
             raise
 
     def _communicate(self):
-        p = select.poll()
         oldflags = fcntl.fcntl(self.__inr, fcntl.F_GETFL)
         fcntl.fcntl(self.__inr, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
-        p.register(self._agent._conn, select.POLLIN)
-        p.register(self.__inr, select.POLLIN)
+        rlist  = [self._agent._conn, self.__inr]
+        wlist = []
+        xlist = []
         while not self._exit:
-            c = p.poll(500)
-            for cc in c:
-                fd, event = cc
-                if self._agent._conn.fileno() == fd:
+            events = select.select(rlist, wlist, xlist, 0.5)
+            for fd in events[0]:
+                if self._agent._conn == fd:
                     data = self._agent._conn.recv(512)
                     if len(data) != 0:
                         self.__inr.send(data)
                     else:
                         break
-                elif self.__inr.fileno() == fd:
+                elif self.__inr == fd:
                     data = self.__inr.recv(512)
                     if len(data) != 0:
                         self._agent._conn.send(data)
