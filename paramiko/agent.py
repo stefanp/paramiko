@@ -117,8 +117,6 @@ class AgentProxyThread(threading.Thread):
             raise
 
     def _communicate(self):
-        oldflags = fcntl.fcntl(self.__inr, fcntl.F_GETFL)
-        fcntl.fcntl(self.__inr, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
         rlist  = [self._agent._conn, self.__inr]
         wlist = []
         xlist = []
@@ -130,13 +128,13 @@ class AgentProxyThread(threading.Thread):
                     if len(data) != 0:
                         self.__inr.send(data)
                     else:
-                        break
+                        rlist.remove(self._agent._conn)
                 elif self.__inr == fd:
                     data = self.__inr.recv(512)
                     if len(data) != 0:
                         self._agent._conn.send(data)
                     else:
-                        break
+                        rlist.remove(self.__inr)
 
 class AgentLocalProxy(AgentProxyThread):
     """
